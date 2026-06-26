@@ -10,7 +10,6 @@ def _get_headers() -> dict:
     token = os.getenv("WATI_API_TOKEN")
     return {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "text/json",
     }
 
 
@@ -28,11 +27,9 @@ def send_text_message(to: str, text: str) -> dict:
     """
     url = f"{_get_base_url()}/api/v1/sendSessionMessage/{to}"
 
-    # Wati espera el mensaje como query param, no en el body
-    params = {"messageText": text}
-
+    # Wati espera form-data, no JSON
     with httpx.Client(timeout=10.0) as client:
-        response = client.post(url, params=params, headers=_get_headers())
+        response = client.post(url, data={"messageText": text}, headers=_get_headers())
         response.raise_for_status()
         return response.json()
 
