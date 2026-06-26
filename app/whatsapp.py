@@ -9,7 +9,7 @@ import httpx
 def _get_headers() -> dict:
     token = os.getenv("WATI_API_TOKEN")
     return {
-        "Authorization": f"Bearer {token}",
+        "Authorization": token,
     }
 
 
