@@ -10,7 +10,7 @@ def _get_headers() -> dict:
     token = os.getenv("WATI_API_TOKEN")
     return {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
+        "Content-Type": "text/json",
     }
 
 
@@ -28,10 +28,11 @@ def send_text_message(to: str, text: str) -> dict:
     """
     url = f"{_get_base_url()}/api/v1/sendSessionMessage/{to}"
 
-    payload = {"message": text}
+    # Wati espera el mensaje como query param, no en el body
+    params = {"messageText": text}
 
     with httpx.Client(timeout=10.0) as client:
-        response = client.post(url, json=payload, headers=_get_headers())
+        response = client.post(url, params=params, headers=_get_headers())
         response.raise_for_status()
         return response.json()
 
@@ -39,7 +40,6 @@ def send_text_message(to: str, text: str) -> dict:
 def send_order_status_message(to: str, order_code: str, status: str) -> dict:
     """
     Envía una notificación de cambio de estado de pedido al cliente.
-    Llamado desde el dashboard cuando el staff actualiza el estado.
     """
     status_messages = {
         "confirmado": f"Tu pedido {order_code} fue confirmado. Pronto lo empezamos a preparar.",
