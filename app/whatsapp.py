@@ -1,5 +1,6 @@
 """
-Cliente para enviar mensajes via Wati API v3.
+Cliente para enviar mensajes via Wati API v1.
+Endpoint: POST /{tenantId}/api/v1/sendSessionMessage/{target}?messageText=texto
 """
 
 import os
@@ -10,7 +11,6 @@ def _get_headers() -> dict:
     token = os.getenv("WATI_API_TOKEN")
     return {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
     }
 
 
@@ -20,21 +20,17 @@ def _get_base_url() -> str:
 
 def send_text_message(to: str, text: str) -> dict:
     """
-    Envía un mensaje de texto a un número de WhatsApp via Wati API v3.
+    Envía un mensaje de texto a un número de WhatsApp via Wati.
 
     Args:
         to: Número de destino con código de país, sin + (ej: 573001234567)
         text: Texto del mensaje
     """
-    url = f"{_get_base_url()}/api/ext/v3/conversations/messages/text"
-
-    payload = {
-        "target": to,
-        "text": text,
-    }
+    url = f"{_get_base_url()}/api/v1/sendSessionMessage/{to}"
+    params = {"messageText": text}
 
     with httpx.Client(timeout=10.0) as client:
-        response = client.post(url, json=payload, headers=_get_headers())
+        response = client.post(url, params=params, headers=_get_headers())
         response.raise_for_status()
         return response.json()
 
