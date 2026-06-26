@@ -4,28 +4,18 @@ Mantiene historial de conversación por número de teléfono (en memoria).
 """
 
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import HumanMessage, AIMessage
-from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langgraph.prebuilt import create_react_agent
 
 from app.knowledge import SYSTEM_PROMPT
 from app.tools import ALL_TOOLS
 
 # Historial de conversación por número de teléfono.
-# En producción esto debería persistirse en Redis o Firestore.
+# En producción esto debería persistirse en Firestore.
 _sessions: dict[str, list] = {}
 
 _model = ChatOpenAI(model="gpt-4.1-mini", temperature=0.3)
-
-_prompt = ChatPromptTemplate.from_messages([
-    ("system", SYSTEM_PROMPT),
-    MessagesPlaceholder(variable_name="history"),
-    ("human", "{input}"),
-    MessagesPlaceholder(variable_name="agent_scratchpad"),
-])
-
-_agent = create_tool_calling_agent(_model, ALL_TOOLS, _prompt)
-_executor = AgentExecutor(agent=_agent, tools=ALL_TOOLS, verbose=False)
+_graph = create_react_agent(_model, ALL_TOOLS)
 
 
 def process_message(phone: str, message: str) -> str:
@@ -41,21 +31,22 @@ def process_message(phone: str, message: str) -> str:
     """
     history = _sessions.get(phone, [])
 
-    result = _executor.invoke({
-        "input": message,
-        "history": history,
-    })
+    messages = (
+        [SystemMessage(content=SYSTEM_PROMPT)]
+        + history
+        + [HumanMessage(content=message)]
+    )
 
-    response = result["output"]
+    result = _graph.invoke({"messages": messages})
+    response = result["messages"][-1].content
 
-    # Actualizar historial (máximo 20 turnos para no inflar el contexto)
+    # Actualizar historial (máximo 20 turnos)
     history.append(HumanMessage(content=message))
     history.append(AIMessage(content=response))
     if len(history) > 40:
         history = history[-40:]
 
     _sessions[phone] = history
-
     return response
 
 
